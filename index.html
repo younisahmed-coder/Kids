@@ -3,68 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>محاسب العائلة المطور | يونس أحمد</title>
+    <title>محاسب العائلة الذكي | يونس أحمد</title>
+    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f8f9fa; display: none; }
-        .card { border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: 0.3s; }
-        .card:hover { transform: translateY(-3px); }
-        .nav-pills .nav-link { border-radius: 10px; font-weight: bold; color: #444; }
-        .nav-pills .nav-link.active { background-color: #0d6efd; color: white; }
-        #loader { position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction: column; }
+        :root { --main-blue: #1a73e8; --bg-gray: #f1f3f4; }
+        body { font-family: 'Cairo', sans-serif; background-color: var(--bg-gray); display: none; }
+        .navbar { background-color: var(--main-blue); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card { border: none; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 20px; }
+        .balance-card { border-top: 4px solid var(--main-blue); }
+        .nav-pills .nav-link.active { background-color: var(--main-blue); }
+        .nav-link { color: #5f6368; font-weight: bold; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); 
+                           display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .text-ils { color: #188038; font-weight: bold; }
+        .text-usd { color: #1967d2; font-weight: bold; }
+        .text-neg { color: #d93025 !important; }
     </style>
 </head>
 <body>
 
-<div id="loader">
-    <div class="spinner-border text-primary mb-2"></div>
-    <p>جاري تحميل البيانات...</p>
+<div id="loader" class="loading-overlay">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="mt-3 text-secondary">جاري تحديث البيانات من السحابة...</p>
 </div>
 
-<nav class="navbar navbar-dark bg-primary mb-4 shadow">
-    <div class="container">
-        <span class="navbar-brand fw-bold">🏠 نظام إدارة مصاريف الأبناء</span>
-        <button class="btn btn-sm btn-light" onclick="loadData()">تحديث</button>
+<nav class="navbar navbar-dark p-3">
+    <div class="container text-center">
+        <span class="navbar-brand mb-0 h1 mx-auto"><i class="fas fa-home me-2"></i> إدارة ميزانية العائلة</span>
     </div>
 </nav>
 
-<div class="container pb-5">
-    <ul class="nav nav-pills mb-4 justify-content-center" id="pills-tab">
-        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#home">📊 الأرصدة</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#trans">💸 إضافة حركة</button></li>
-        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#setup">⚙️ الإعدادات</button></li>
+<div class="container mt-4">
+    <ul class="nav nav-pills justify-content-center mb-4" id="mainTabs">
+        <li class="nav-item">
+            <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#summary"><i class="fas fa-wallet me-1"></i> الأرصدة</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#addTrans"><i class="fas fa-plus-circle me-1"></i> حركة جديدة</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-bs-toggle="pill" data-bs-target="#settings"><i class="fas fa-users-cog me-1"></i> الإعدادات</button>
+        </li>
     </ul>
 
     <div class="tab-content">
-        <div class="tab-pane fade show active" id="home">
-            <div class="row g-3" id="summaryView"></div>
+        <div class="tab-pane fade show active" id="summary">
+            <div class="row g-3" id="summaryContainer">
+                <div class="col-12 text-center text-muted">جاري تحميل البيانات...</div>
+            </div>
         </div>
 
-        <div class="tab-pane fade" id="trans">
-            <div class="card p-4">
-                <h5 class="mb-4 text-primary">تسجيل عملية مالية جديدة</h5>
-                <form id="transForm">
-                    <div class="row g-3">
-                        <div class="col-md-6"><label class="form-label">الاسم</label><select id="selChild" class="form-select" required></select></div>
-                        <div class="col-md-6"><label class="form-label">العملة</label><select id="selCurr" class="form-select"><option value="ILS">شيكل (₪)</option><option value="USD">دولار ($)</option></select></div>
-                        <div class="col-md-6"><label class="form-label">المبلغ</label><input type="number" id="valAmount" class="form-control" step="0.01" required></div>
-                        <div class="col-md-6"><label class="form-label">نوع العملية</label><select id="selType" class="form-select"><option value="deposit">إيداع (+)</option><option value="withdraw">سحب (-)</option></select></div>
-                        <div class="col-12"><label class="form-label">ملاحظات إضافية (اختياري)</label><textarea id="valNotes" class="form-control" rows="2" placeholder="مثلاً: شراء كتب، مصروف مدرسة..."></textarea></div>
-                        <div class="col-12 mt-4"><button type="submit" class="btn btn-primary w-100 py-2 fw-bold">حفظ في السحابة</button></div>
+        <div class="tab-pane fade" id="addTrans">
+            <div class="card p-4 mx-auto" style="max-width: 600px;">
+                <h5 class="mb-4 text-center fw-bold text-dark">تسجيل سحب أو إيداع</h5>
+                <form id="formTransaction">
+                    <div class="mb-3">
+                        <label class="form-label">الاسم</label>
+                        <select id="childList" class="form-select" required></select>
                     </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">المبلغ</label>
+                            <input type="number" step="0.01" id="amount" class="form-control" required placeholder="0.00">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">العملة</label>
+                            <select id="currency" class="form-select">
+                                <option value="ILS">شيكل ₪</option>
+                                <option value="USD">دولار $</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">نوع العملية</label>
+                        <select id="type" class="form-select">
+                            <option value="deposit">إيداع (+)</option>
+                            <option value="withdraw">سحب (-)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ملاحظات</label>
+                        <textarea id="notes" class="form-control" rows="2" placeholder="اكتب سبباً للصرف/الإيداع"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">حفظ العملية</button>
                 </form>
             </div>
         </div>
 
-        <div class="tab-pane fade" id="setup">
-            <div class="card p-4">
-                <h5 class="mb-3 text-success">إضافة فرد جديد للعائلة</h5>
-                <form id="accForm" class="row g-2">
-                    <div class="col-md-7"><input type="text" id="newName" class="form-control" placeholder="الاسم الكامل" required></div>
-                    <div class="col-md-3 d-flex align-items-center justify-content-center"><div class="form-check"><input type="checkbox" id="overCheck" class="form-check-input"> <label class="form-check-label">رصيد سالب</label></div></div>
-                    <div class="col-md-2"><button type="submit" class="btn btn-success w-100">إضافة</button></div>
+        <div class="tab-pane fade" id="settings">
+            <div class="card p-4 mx-auto" style="max-width: 500px;">
+                <h5 class="mb-3 fw-bold">إضافة فرد جديد</h5>
+                <form id="formAddAccount">
+                    <div class="mb-3">
+                        <input type="text" id="newName" class="form-control" placeholder="الاسم الكامل" required>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="overdraft">
+                        <label class="form-check-label">السماح بالرصيد السالب</label>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">إنشاء حساب</button>
                 </form>
             </div>
         </div>
@@ -72,71 +114,114 @@
 </div>
 
 <script>
+    // الرابط الذي زودتني به
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDiHg97FGjqawi8miH9z2nYFlIYlByRJ-1te_TaGNONIa-50qqKKIY1D1EgejsFX62aQ/exec";
-    const PASSWORD = "123";
+    const PASS = "123";
 
-    function authenticate() {
-        let pass = prompt("كلمة المرور:");
-        if (pass === PASSWORD) { document.body.style.display = "block"; loadData(); }
-        else { alert("خطأ!"); window.location.reload(); }
-    }
+    // وظيفة الأمان
+    (function auth() {
+        let entry = prompt("كلمة المرور:");
+        if (entry === PASS) {
+            document.body.style.display = "block";
+            fetchData();
+        } else {
+            alert("خطأ!");
+            window.location.reload();
+        }
+    })();
 
-    async function loadData() {
-        document.getElementById('loader').style.display = 'flex';
+    async function fetchData() {
+        showLoader(true);
         try {
-            const res = await fetch(`${SCRIPT_URL}?action=getSummary`);
-            const data = await res.json();
-            render(data.accounts);
-        } catch (e) { console.error(e); }
-        document.getElementById('loader').style.display = 'none';
-    }
-
-    function render(accs) {
-        const view = document.getElementById('summaryView');
-        const sel = document.getElementById('selChild');
-        view.innerHTML = ""; sel.innerHTML = '<option value="">اختر الاسم...</option>';
-        accs.forEach(a => {
-            view.innerHTML += `<div class="col-md-4"><div class="card p-3 border-start border-primary border-5">
-                <h6 class="fw-bold">${a.name}</h6>
-                <div class="d-flex justify-content-between small"><span>شيكل:</span> <span class="${a.balILS < 0 ? 'text-danger':'text-success'} fw-bold">${a.balILS} ₪</span></div>
-                <div class="d-flex justify-content-between small"><span>دولار:</span> <span class="${a.balUSD < 0 ? 'text-danger':'text-primary'} fw-bold">${a.balUSD} $</span></div>
-            </div></div>`;
-            sel.innerHTML += `<option value="${a.name}">${a.name}</option>`;
-        });
-    }
-
-    async function apiRequest(data) {
-        document.getElementById('loader').style.display = 'flex';
-        try {
-            const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
-            const res = await response.json();
-            if (res.status === "success") {
-                Swal.fire('تم بنجاح', res.message, 'success').then(() => location.reload());
-            } else {
-                Swal.fire('خطأ', res.message, 'error');
+            // إضافة طابع زمني لمنع التخزين المؤقت (Cache)
+            const response = await fetch(`${SCRIPT_URL}?action=getSummary&t=${new Date().getTime()}`);
+            const data = await response.json();
+            if (data.status === "success") {
+                renderUI(data.accounts);
             }
-        } catch (e) { Swal.fire('فشل', 'خطأ في الاتصال بالسيرفر', 'error'); }
-        document.getElementById('loader').style.display = 'none';
+        } catch (e) {
+            console.error("Fetch Error:", e);
+        } finally {
+            showLoader(false);
+        }
     }
 
-    document.getElementById('accForm').onsubmit = (e) => {
-        e.preventDefault();
-        apiRequest({ action: "addAccount", name: document.getElementById('newName').value, allowOverdraft: document.getElementById('overCheck').checked });
-    };
+    function renderUI(accounts) {
+        const container = document.getElementById('summaryContainer');
+        const select = document.getElementById('childList');
+        container.innerHTML = "";
+        select.innerHTML = '<option value="">اختر...</option>';
 
-    document.getElementById('transForm').onsubmit = (e) => {
+        accounts.forEach(acc => {
+            // بناء كروت الأرصدة
+            container.innerHTML += `
+                <div class="col-md-4">
+                    <div class="card p-3 balance-card">
+                        <h6 class="fw-bold text-dark border-bottom pb-2">${acc.name}</h6>
+                        <div class="d-flex justify-content-between mt-2">
+                            <span>شيكل:</span>
+                            <span class="${acc.balILS < 0 ? 'text-neg' : 'text-ils'}">${acc.balILS} ₪</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>دولار:</span>
+                            <span class="${acc.balUSD < 0 ? 'text-neg' : 'text-usd'}">${acc.balUSD} $</span>
+                        </div>
+                    </div>
+                </div>`;
+            
+            // تعبئة القائمة المنسدلة
+            select.innerHTML += `<option value="${acc.name}">${acc.name}</option>`;
+        });
+    }
+
+    async function postData(payload) {
+        showLoader(true);
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.status === "success") {
+                Swal.fire('تم!', result.message, 'success').then(() => fetchData());
+            } else {
+                Swal.fire('خطأ', result.message, 'error');
+            }
+        } catch (e) {
+            Swal.fire('فشل', 'تعذر الاتصال بالسيرفر، تأكد من إعدادات النشر في Apps Script', 'error');
+        } finally {
+            showLoader(false);
+        }
+    }
+
+    // إدارة الحركات
+    document.getElementById('formTransaction').onsubmit = (e) => {
         e.preventDefault();
-        apiRequest({ 
-            action: "addTransaction", 
-            name: document.getElementById('selChild').value, 
-            currency: document.getElementById('selCurr').value, 
-            amount: parseFloat(document.getElementById('valAmount').value), 
-            type: document.getElementById('selType').value,
-            notes: document.getElementById('valNotes').value 
+        postData({
+            action: "addTransaction",
+            name: document.getElementById('childList').value,
+            amount: parseFloat(document.getElementById('amount').value),
+            currency: document.getElementById('currency').value,
+            type: document.getElementById('type').value,
+            notes: document.getElementById('notes').value
         });
     };
 
-    authenticate();
+    // إدارة الحسابات
+    document.getElementById('formAddAccount').onsubmit = (e) => {
+        e.preventDefault();
+        postData({
+            action: "addAccount",
+            name: document.getElementById('newName').value,
+            allowOverdraft: document.getElementById('overdraft').checked
+        });
+    };
+
+    function showLoader(show) {
+        document.getElementById('loader').style.display = show ? 'flex' : 'none';
+    }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
