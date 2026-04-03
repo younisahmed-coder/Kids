@@ -3,254 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام المحاسبة العائلي الذكي</title>
+    <title>محاسب العائلة المطور | يونس أحمد</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f0f2f5; color: #333; }
-        .navbar { background: #1a237e; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .nav-pills .nav-link { color: #555; font-weight: bold; margin-left: 10px; border-radius: 8px; }
-        .nav-pills .nav-link.active { background-color: #1a237e; }
-        .balance-card { border-right: 5px solid #1a237e; transition: transform 0.2s; }
-        .balance-card:hover { transform: translateY(-5px); }
-        .text-ils { color: #2e7d32; font-weight: bold; }
-        .text-usd { color: #1565c0; font-weight: bold; }
-        .negative-balance { color: #d32f2f !important; }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
+        body { font-family: 'Cairo', sans-serif; background-color: #f8f9fa; display: none; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: 0.3s; }
+        .card:hover { transform: translateY(-3px); }
+        .nav-pills .nav-link { border-radius: 10px; font-weight: bold; color: #444; }
+        .nav-pills .nav-link.active { background-color: #0d6efd; color: white; }
+        #loader { position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction: column; }
     </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loader">
-    <div class="spinner-border text-primary" role="status"></div>
+<div id="loader">
+    <div class="spinner-border text-primary mb-2"></div>
+    <p>جاري تحميل البيانات...</p>
 </div>
 
-<nav class="navbar navbar-dark mb-4">
+<nav class="navbar navbar-dark bg-primary mb-4 shadow">
     <div class="container">
-        <span class="navbar-brand mb-0 h1"><i class="fas fa-calculator-alt me-2"></i> نظام إدارة مصاريف الأولاد</span>
-        <span class="text-white-50 small">متصل بـ Google Sheets</span>
+        <span class="navbar-brand fw-bold">🏠 نظام إدارة مصاريف الأبناء</span>
+        <button class="btn btn-sm btn-light" onclick="loadData()">تحديث</button>
     </div>
 </nav>
 
-<div class="container">
-    <ul class="nav nav-pills justify-content-center mb-4" id="mainTabs" role="tablist">
-        <li class="nav-item">
-            <button class="nav-link active" id="summary-tab" data-bs-toggle="pill" data-bs-target="#tab-summary"><i class="fas fa-chart-pie me-1"></i> الأرصدة والملخص</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="accounts-tab" data-bs-toggle="pill" data-bs-target="#tab-accounts"><i class="fas fa-users-cog me-1"></i> إدارة الحسابات</button>
-        </li>
-        <li class="nav-item">
-            <button class="nav-link" id="trans-tab" data-bs-toggle="pill" data-bs-target="#tab-trans"><i class="fas fa-exchange-alt me-1"></i> الحركات المالية</button>
-        </li>
+<div class="container pb-5">
+    <ul class="nav nav-pills mb-4 justify-content-center" id="pills-tab">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#home">📊 الأرصدة</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#trans">💸 إضافة حركة</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#setup">⚙️ الإعدادات</button></li>
     </ul>
 
     <div class="tab-content">
-        
-        <div class="tab-pane fade show active" id="tab-summary">
-            <div class="row" id="balanceCards">
-                <div class="col-12 text-center text-muted p-5">جاري تحميل البيانات من Google Sheets...</div>
-            </div>
+        <div class="tab-pane fade show active" id="home">
+            <div class="row g-3" id="summaryView"></div>
         </div>
 
-        <div class="tab-pane fade" id="tab-accounts">
+        <div class="tab-pane fade" id="trans">
             <div class="card p-4">
-                <h5 class="card-title border-bottom pb-2 mb-3">إضافة حساب جديد للابن/البنت</h5>
-                <form id="accountForm" class="row g-3 align-items-end">
-                    <div class="col-md-5">
-                        <label class="form-label">الاسم بالكامل</label>
-                        <input type="text" id="accName" class="form-control" placeholder="مثال: أحمد محمد" required>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="accOverdraft">
-                            <label class="form-check-label">السماح بتجاوز الرصيد (الرصيد السالب)</label>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <button type="submit" class="btn btn-success w-100"><i class="fas fa-plus-circle me-1"></i> إنشاء حساب</button>
-                    </div>
-                </form>
-            </div>
-            
-            <div class="card p-4">
-                <h5 class="card-title mb-3">قائمة الحسابات الحالية</h5>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>الاسم</th>
-                                <th>تجاوز الرصيد</th>
-                                <th>رصيد الشيكل</th>
-                                <th>رصيد الدولار</th>
-                                <th>إجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="accountsListTable">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="tab-pane fade" id="tab-trans">
-            <div class="card p-4">
-                <h5 class="card-title border-bottom pb-2 mb-3">تسجيل حركة مالية جديدة</h5>
-                <form id="transactionForm" class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">اختيار الابن</label>
-                        <select class="form-select" id="transChild" required></select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">نوع العملية</label>
-                        <select class="form-select" id="transType">
-                            <option value="deposit">إيداع (زيادة رصيد)</option>
-                            <option value="withdraw">سحب (مصروف)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">المبلغ</label>
-                        <input type="number" step="0.01" class="form-control" id="transAmount" required>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label">العملة</label>
-                        <select class="form-select" id="transCurrency">
-                            <option value="ILS">شيكل ₪</option>
-                            <option value="USD">دولار $</option>
-                        </select>
-                    </div>
-                    <div class="col-md-12">
-                        <button type="submit" class="btn btn-primary w-100 py-2 mt-2"><i class="fas fa-save me-1"></i> حفظ الحركة وتحديث الرصيد</button>
+                <h5 class="mb-4 text-primary">تسجيل عملية مالية جديدة</h5>
+                <form id="transForm">
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">الاسم</label><select id="selChild" class="form-select" required></select></div>
+                        <div class="col-md-6"><label class="form-label">العملة</label><select id="selCurr" class="form-select"><option value="ILS">شيكل (₪)</option><option value="USD">دولار ($)</option></select></div>
+                        <div class="col-md-6"><label class="form-label">المبلغ</label><input type="number" id="valAmount" class="form-control" step="0.01" required></div>
+                        <div class="col-md-6"><label class="form-label">نوع العملية</label><select id="selType" class="form-select"><option value="deposit">إيداع (+)</option><option value="withdraw">سحب (-)</option></select></div>
+                        <div class="col-12"><label class="form-label">ملاحظات إضافية (اختياري)</label><textarea id="valNotes" class="form-control" rows="2" placeholder="مثلاً: شراء كتب، مصروف مدرسة..."></textarea></div>
+                        <div class="col-12 mt-4"><button type="submit" class="btn btn-primary w-100 py-2 fw-bold">حفظ في السحابة</button></div>
                     </div>
                 </form>
             </div>
         </div>
 
+        <div class="tab-pane fade" id="setup">
+            <div class="card p-4">
+                <h5 class="mb-3 text-success">إضافة فرد جديد للعائلة</h5>
+                <form id="accForm" class="row g-2">
+                    <div class="col-md-7"><input type="text" id="newName" class="form-control" placeholder="الاسم الكامل" required></div>
+                    <div class="col-md-3 d-flex align-items-center justify-content-center"><div class="form-check"><input type="checkbox" id="overCheck" class="form-check-input"> <label class="form-check-label">رصيد سالب</label></div></div>
+                    <div class="col-md-2"><button type="submit" class="btn btn-success w-100">إضافة</button></div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-    // هام: استبدل هذا الرابط برابط Web App Deployment الخاص بك من Apps Script
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby3Y5xGjUX8y2yefSZKB9oeS2H4mJ3qA-0gvZFwObY5qKyZP4cbspWXyLR-QF1K0RhM/exec";
+    const SCRIPT_URL=https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css";
+    const PASSWORD = "123";
 
-    // دوال المساعدة
-    const showLoader = () => document.getElementById('loader').style.display = 'flex';
-    const hideLoader = () => document.getElementById('loader').style.display = 'none';
-
-    // 1. إضافة حساب جديد
-    document.getElementById('accountForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const data = {
-            action: "addAccount",
-            name: document.getElementById('accName').value,
-            allowOverdraft: document.getElementById('accOverdraft').checked
-        };
-        await sendData(data);
-    });
-
-    // 2. إضافة حركة مالية
-    document.getElementById('transactionForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const data = {
-            action: "addTransaction",
-            name: document.getElementById('transChild').value,
-            type: document.getElementById('transType').value,
-            amount: parseFloat(document.getElementById('transAmount').value),
-            currency: document.getElementById('transCurrency').value,
-            date: new Date().toISOString()
-        };
-        await sendData(data);
-    });
-
-    // دالة إرسال البيانات العامة
-    async function sendData(payload) {
-        showLoader();
-        try {
-            const response = await fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            
-            if (result.status === "success") {
-                Swal.fire('نجاح!', result.message, 'success').then(() => location.reload());
-            } else {
-                Swal.fire('خطأ!', result.message, 'error');
-            }
-        } catch (error) {
-            Swal.fire('فشل!', 'تعذر الاتصال بالسيرفر', 'error');
-        } finally {
-            hideLoader();
-        }
+    function authenticate() {
+        let pass = prompt("كلمة المرور:");
+        if (pass === PASSWORD) { document.body.style.display = "block"; loadData(); }
+        else { alert("خطأ!"); window.location.reload(); }
     }
 
-    // دالة جلب البيانات الأولية (الأرصدة والحسابات)
     async function loadData() {
-        showLoader();
+        document.getElementById('loader').style.display = 'flex';
         try {
-            const response = await fetch(`${SCRIPT_URL}?action=getSummary`); // تطلب GET من السكربت
-            const data = await response.json();
-            renderAccounts(data.accounts);
-            renderSummary(data.accounts);
-        } catch (e) {
-            console.log("البيانات قيد الانتظار أو السكربت يحتاج تفعيل..");
-        } finally {
-            hideLoader();
-        }
+            const res = await fetch(`${SCRIPT_URL}?action=getSummary`);
+            const data = await res.json();
+            render(data.accounts);
+        } catch (e) { console.error(e); }
+        document.getElementById('loader').style.display = 'none';
     }
 
-    function renderAccounts(accounts) {
-        const list = document.getElementById('accountsListTable');
-        const select = document.getElementById('transChild');
-        list.innerHTML = "";
-        select.innerHTML = '<option value="">اختر الحساب...</option>';
-
-        accounts.forEach(acc => {
-            list.innerHTML += `
-                <tr>
-                    <td><strong>${acc.name}</strong></td>
-                    <td><span class="badge ${acc.overdraft === 'نعم' ? 'bg-success' : 'bg-secondary'}">${acc.overdraft}</span></td>
-                    <td class="${acc.balILS < 0 ? 'negative-balance' : 'text-ils'}">${acc.balILS} ₪</td>
-                    <td class="${acc.balUSD < 0 ? 'negative-balance' : 'text-usd'}">${acc.balUSD} $</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAccount('${acc.name}')"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `;
-            select.innerHTML += `<option value="${acc.name}">${acc.name}</option>`;
+    function render(accs) {
+        const view = document.getElementById('summaryView');
+        const sel = document.getElementById('selChild');
+        view.innerHTML = ""; sel.innerHTML = '<option value="">اختر الاسم...</option>';
+        accs.forEach(a => {
+            view.innerHTML += `<div class="col-md-4"><div class="card p-3 border-start border-primary border-5">
+                <h6 class="fw-bold">${a.name}</h6>
+                <div class="d-flex justify-content-between small"><span>شيكل:</span> <span class="${a.balILS < 0 ? 'text-danger':'text-success'} fw-bold">${a.balILS} ₪</span></div>
+                <div class="d-flex justify-content-between small"><span>دولار:</span> <span class="${a.balUSD < 0 ? 'text-danger':'text-primary'} fw-bold">${a.balUSD} $</span></div>
+            </div></div>`;
+            sel.innerHTML += `<option value="${a.name}">${a.name}</option>`;
         });
     }
 
-    function renderSummary(accounts) {
-        const container = document.getElementById('balanceCards');
-        container.innerHTML = "";
-        accounts.forEach(acc => {
-            container.innerHTML += `
-                <div class="col-md-4">
-                    <div class="card p-3 balance-card">
-                        <h6>${acc.name}</h6>
-                        <div class="d-flex justify-content-between">
-                            <span class="small text-muted">رصيد الشيكل:</span>
-                            <span class="${acc.balILS < 0 ? 'negative-balance' : 'text-ils'}">${acc.balILS} ₪</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="small text-muted">رصيد الدولار:</span>
-                            <span class="${acc.balUSD < 0 ? 'negative-balance' : 'text-usd'}">${acc.balUSD} $</span>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
+    async function apiRequest(data) {
+        document.getElementById('loader').style.display = 'flex';
+        try {
+            const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(data) });
+            const res = await response.json();
+            if (res.status === "success") {
+                Swal.fire('تم بنجاح', res.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('خطأ', res.message, 'error');
+            }
+        } catch (e) { Swal.fire('فشل', 'خطأ في الاتصال بالسيرفر', 'error'); }
+        document.getElementById('loader').style.display = 'none';
     }
 
-    // تشغيل عند التحميل
-    window.onload = loadData;
+    document.getElementById('accForm').onsubmit = (e) => {
+        e.preventDefault();
+        apiRequest({ action: "addAccount", name: document.getElementById('newName').value, allowOverdraft: document.getElementById('overCheck').checked });
+    };
+
+    document.getElementById('transForm').onsubmit = (e) => {
+        e.preventDefault();
+        apiRequest({ 
+            action: "addTransaction", 
+            name: document.getElementById('selChild').value, 
+            currency: document.getElementById('selCurr').value, 
+            amount: parseFloat(document.getElementById('valAmount').value), 
+            type: document.getElementById('selType').value,
+            notes: document.getElementById('valNotes').value 
+        });
+    };
+
+    authenticate();
 </script>
 </body>
 </html>
